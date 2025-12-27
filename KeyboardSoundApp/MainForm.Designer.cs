@@ -27,12 +27,11 @@ namespace KeyboardSoundApp
                 // If icon fails to load, continue without icon
             }
 
-            // Form properties
+            // Form properties - DON'T minimize or hide on first launch
             this.Text = "Keyboard Sound App";
-            this.WindowState = System.Windows.Forms.FormWindowState.Minimized;
-            this.ShowInTaskbar = false;
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
-            this.Size = new System.Drawing.Size(0, 0);
+            this.Size = new System.Drawing.Size(300, 200);
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+            // Leave WindowState and ShowInTaskbar as default (Normal and true) for first launch
         }
     }
 }

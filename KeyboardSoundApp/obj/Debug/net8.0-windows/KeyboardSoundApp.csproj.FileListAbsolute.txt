@@ -12,3 +12,4 @@ C:\Users\Ava\Documents\GitHub\Keyboard-Sound\KeyboardSoundApp\obj\Debug\net8.0-w
 C:\Users\Ava\Documents\GitHub\Keyboard-Sound\KeyboardSoundApp\obj\Debug\net8.0-windows\KeyboardSoundApp.pdb
 C:\Users\Ava\Documents\GitHub\Keyboard-Sound\KeyboardSoundApp\obj\Debug\net8.0-windows\KeyboardSoundApp.genruntimeconfig.cache
 C:\Users\Ava\Documents\GitHub\Keyboard-Sound\KeyboardSoundApp\obj\Debug\net8.0-windows\ref\KeyboardSoundApp.dll
+C:\Users\Ava\Documents\GitHub\Keyboard-Sound\KeyboardSoundApp\obj\Debug\net8.0-windows\KeyboardSoundApp.sourcelink.json

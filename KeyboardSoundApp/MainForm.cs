@@ -32,6 +32,9 @@ namespace KeyboardSoundApp
                 Logger.Log("Initializing application...");
                 InitializeApplication();
                 Logger.Log("Application initialization complete");
+
+                // Show Settings form on first launch (when form is shown)
+                this.Load += MainForm_Load;
             }
             catch (Exception ex)
             {
@@ -40,16 +43,50 @@ namespace KeyboardSoundApp
             }
         }
 
+        private void MainForm_Load(object? sender, EventArgs e)
+        {
+            Logger.Log("MainForm_Load called - showing Settings form on first launch");
+            try
+            {
+                // Show Settings form immediately on first launch
+                // Hide the MainForm (it's just a system tray manager)
+                this.Hide();
+                this.WindowState = FormWindowState.Minimized;
+                this.ShowInTaskbar = false;
+                
+                // Show Settings form as a non-modal dialog so user can interact with it
+                var settingsForm = new SettingsForm(_fileManager, _config);
+                settingsForm.FormClosed += (s, args) =>
+                {
+                    // When Settings form closes, reload config and update
+                    Logger.Log("Settings form closed, reloading configuration");
+                    _config = AppConfig.Load();
+                    LoadAudioFile();
+                    UpdateContextMenu();
+
+                    // Restart hook if needed
+                    _keyboardHook?.UninstallHook();
+                    if (_config.IsEnabled)
+                    {
+                        _keyboardHook?.InstallHook();
+                    }
+                };
+                settingsForm.Show();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Error in MainForm_Load", ex);
+            }
+        }
+
         private void InitializeApplication()
         {
             Logger.Log("InitializeApplication called");
             try
             {
-                // Set form to be hidden
-                this.WindowState = FormWindowState.Minimized;
-                this.ShowInTaskbar = false;
-                Logger.Log("Form set to minimized and hidden from taskbar");
-
+                // DON'T minimize or hide on first launch - let it show normally
+                // Form will be visible in taskbar on first launch
+                
                 // Initialize keyboard hook
                 Logger.Log("Creating KeyboardHook...");
                 _keyboardHook = new KeyboardHook();
@@ -106,6 +143,8 @@ namespace KeyboardSoundApp
                     else
                     {
                         Logger.Log($"Default audio file not found: {fullPath}");
+                        _config.DefaultAudioFile = string.Empty;
+                        _config.Save();
                     }
                 }
                 else
@@ -113,22 +152,9 @@ namespace KeyboardSoundApp
                     Logger.Log("No default audio file configured");
                 }
 
-                // Try to load first available file
-                Logger.Log("Looking for available audio files...");
-                var files = _fileManager.GetAllFiles();
-                Logger.Log($"Found {files.Count} audio file(s)");
-                if (files.Count > 0)
-                {
-                    _currentAudioFile = _fileManager.GetFullPath(files[0]);
-                    _config.DefaultAudioFile = files[0];
-                    _config.Save();
-                    Logger.Log($"Set first available file as default: {_currentAudioFile}");
-                }
-                else
-                {
-                    Logger.Log("WARNING: No audio files available!");
-                    _currentAudioFile = string.Empty;
-                }
+                // DON'T auto-set first available file - user must explicitly set it
+                Logger.Log("No default audio file set - user must select one in settings");
+                _currentAudioFile = string.Empty;
             }
             catch (Exception ex)
             {
@@ -161,7 +187,7 @@ namespace KeyboardSoundApp
             try
             {
                 Logger.Log($"Playing sound: {_currentAudioFile}");
-                // Play sound on a separate thread to avoid blocking the hook
+                // Play sound on a separate thread - fire and forget for overlapping playback
                 System.Threading.Tasks.Task.Run(() =>
                 {
                     MediaPlayer? player = null;
@@ -176,14 +202,16 @@ namespace KeyboardSoundApp
                         player.Play();
                         Logger.Log("Media playback started");
                         
-                        // Wait briefly to ensure playback starts
-                        System.Threading.Thread.Sleep(200);
+                        // No sleep needed - MediaPlayer.Play() is non-blocking
+                        // Each MediaPlayer instance will play independently, allowing overlapping sounds
                     }
                     catch (Exception ex)
                     {
                         Logger.LogError("Error playing sound", ex);
                         player?.Close();
                     }
+                    // Note: MediaPlayer will be garbage collected when out of scope
+                    // This allows multiple instances to play simultaneously
                 });
             }
             catch (Exception ex)
@@ -261,7 +289,11 @@ namespace KeyboardSoundApp
             if (e.CloseReason == CloseReason.UserClosing)
             {
                 e.Cancel = true;
+                // Hide to system tray instead of closing
+                this.WindowState = FormWindowState.Minimized;
+                this.ShowInTaskbar = false;
                 this.Hide();
+                Logger.Log("Form minimized to system tray");
             }
             else
             {
