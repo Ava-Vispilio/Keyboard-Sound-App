@@ -1,0 +1,14 @@
+C:\Users\Ava\Documents\GitHub\Keyboard-Sound\KeyboardSoundApp\bin\Debug\net8.0-windows\KeyboardSoundApp.exe
+C:\Users\Ava\Documents\GitHub\Keyboard-Sound\KeyboardSoundApp\bin\Debug\net8.0-windows\KeyboardSoundApp.deps.json
+C:\Users\Ava\Documents\GitHub\Keyboard-Sound\KeyboardSoundApp\bin\Debug\net8.0-windows\KeyboardSoundApp.runtimeconfig.json
+C:\Users\Ava\Documents\GitHub\Keyboard-Sound\KeyboardSoundApp\bin\Debug\net8.0-windows\KeyboardSoundApp.dll
+C:\Users\Ava\Documents\GitHub\Keyboard-Sound\KeyboardSoundApp\bin\Debug\net8.0-windows\KeyboardSoundApp.pdb
+C:\Users\Ava\Documents\GitHub\Keyboard-Sound\KeyboardSoundApp\obj\Debug\net8.0-windows\KeyboardSoundApp.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Ava\Documents\GitHub\Keyboard-Sound\KeyboardSoundApp\obj\Debug\net8.0-windows\KeyboardSoundApp.AssemblyInfoInputs.cache
+C:\Users\Ava\Documents\GitHub\Keyboard-Sound\KeyboardSoundApp\obj\Debug\net8.0-windows\KeyboardSoundApp.AssemblyInfo.cs
+C:\Users\Ava\Documents\GitHub\Keyboard-Sound\KeyboardSoundApp\obj\Debug\net8.0-windows\KeyboardSoundApp.csproj.CoreCompileInputs.cache
+C:\Users\Ava\Documents\GitHub\Keyboard-Sound\KeyboardSoundApp\obj\Debug\net8.0-windows\KeyboardSoundApp.dll
+C:\Users\Ava\Documents\GitHub\Keyboard-Sound\KeyboardSoundApp\obj\Debug\net8.0-windows\refint\KeyboardSoundApp.dll
+C:\Users\Ava\Documents\GitHub\Keyboard-Sound\KeyboardSoundApp\obj\Debug\net8.0-windows\KeyboardSoundApp.pdb
+C:\Users\Ava\Documents\GitHub\Keyboard-Sound\KeyboardSoundApp\obj\Debug\net8.0-windows\KeyboardSoundApp.genruntimeconfig.cache
+C:\Users\Ava\Documents\GitHub\Keyboard-Sound\KeyboardSoundApp\obj\Debug\net8.0-windows\ref\KeyboardSoundApp.dll
