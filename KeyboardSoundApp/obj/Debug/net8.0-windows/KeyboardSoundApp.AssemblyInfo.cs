@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("KeyboardSoundApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+149b243085dc6551d99917a16d2897296f346901")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d40c448c03745795c6e54b281f8f048ecc77e2ca")]
 [assembly: System.Reflection.AssemblyProductAttribute("KeyboardSoundApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("KeyboardSoundApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

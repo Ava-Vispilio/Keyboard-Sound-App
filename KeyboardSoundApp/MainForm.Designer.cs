@@ -27,11 +27,13 @@ namespace KeyboardSoundApp
                 // If icon fails to load, continue without icon
             }
 
-            // Form properties - DON'T minimize or hide on first launch
+            // Form properties - Hide MainForm, it's just a system tray manager
             this.Text = "Keyboard Sound App";
-            this.Size = new System.Drawing.Size(300, 200);
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            // Leave WindowState and ShowInTaskbar as default (Normal and true) for first launch
+            this.WindowState = System.Windows.Forms.FormWindowState.Minimized;
+            this.ShowInTaskbar = false;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
+            this.Size = new System.Drawing.Size(0, 0);
+            this.Opacity = 0;
         }
     }
 }

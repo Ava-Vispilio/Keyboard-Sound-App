@@ -33,8 +33,9 @@ namespace KeyboardSoundApp
                 InitializeApplication();
                 Logger.Log("Application initialization complete");
 
-                // Show Settings form on first launch (when form is shown)
-                this.Load += MainForm_Load;
+                // Show Settings form immediately on first launch
+                // Use Shown event instead of Load to ensure form is fully initialized
+                this.Shown += MainForm_Shown;
             }
             catch (Exception ex)
             {
@@ -43,17 +44,12 @@ namespace KeyboardSoundApp
             }
         }
 
-        private void MainForm_Load(object? sender, EventArgs e)
+        private void MainForm_Shown(object? sender, EventArgs e)
         {
-            Logger.Log("MainForm_Load called - showing Settings form on first launch");
+            Logger.Log("MainForm_Shown called - showing Settings form on first launch");
             try
             {
-                // Show Settings form immediately on first launch
-                // Hide the MainForm (it's just a system tray manager)
-                this.Hide();
-                this.WindowState = FormWindowState.Minimized;
-                this.ShowInTaskbar = false;
-                
+                // MainForm is already hidden (set in Designer), now show Settings form
                 // Show Settings form as a non-modal dialog so user can interact with it
                 var settingsForm = new SettingsForm(_fileManager, _config);
                 settingsForm.FormClosed += (s, args) =>
@@ -75,7 +71,7 @@ namespace KeyboardSoundApp
             }
             catch (Exception ex)
             {
-                Logger.LogError("Error in MainForm_Load", ex);
+                Logger.LogError("Error in MainForm_Shown", ex);
             }
         }
 
