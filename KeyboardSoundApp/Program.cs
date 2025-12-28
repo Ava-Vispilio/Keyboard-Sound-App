@@ -16,8 +16,8 @@ static class Program
             ApplicationConfiguration.Initialize();
             Logger.Log("Application configuration initialized");
             
-            Logger.Log("Creating MainForm...");
-            Application.Run(new MainForm());
+            Logger.Log("Creating TrayApplicationContext...");
+            Application.Run(new TrayApplicationContext());
             Logger.Log("Application run completed");
         }
         catch (Exception ex)

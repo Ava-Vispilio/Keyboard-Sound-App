@@ -5,22 +5,23 @@ using System.Windows.Media;
 
 namespace KeyboardSoundApp
 {
-    public partial class MainForm : Form
+    public class TrayApplicationContext : ApplicationContext
     {
         private KeyboardHook? _keyboardHook;
         private AudioFileManager _fileManager;
         private AppConfig _config;
         private string _currentAudioFile = string.Empty;
+        private NotifyIcon _notifyIcon = null!;
+        private ContextMenuStrip _contextMenuStrip = null!;
+        private System.ComponentModel.IContainer _components;
 
-        public MainForm()
+        public TrayApplicationContext()
         {
-            Logger.Log("MainForm constructor called");
+            Logger.Log("TrayApplicationContext constructor called");
             try
             {
-                Logger.Log("Initializing component...");
-                InitializeComponent();
-                Logger.Log("Component initialized");
-
+                _components = new System.ComponentModel.Container();
+                
                 Logger.Log("Creating AudioFileManager...");
                 _fileManager = new AudioFileManager();
                 Logger.Log($"AudioFileManager created. Storage path: {_fileManager.GetStoragePath()}");
@@ -29,49 +30,58 @@ namespace KeyboardSoundApp
                 _config = AppConfig.Load();
                 Logger.Log($"Configuration loaded. IsEnabled: {_config.IsEnabled}, DefaultAudioFile: {_config.DefaultAudioFile}");
 
+                Logger.Log("Initializing system tray...");
+                InitializeSystemTray();
+
                 Logger.Log("Initializing application...");
                 InitializeApplication();
+
                 Logger.Log("Application initialization complete");
 
-                // Show Settings form immediately on first launch
-                // Use Shown event instead of Load to ensure form is fully initialized
-                this.Shown += MainForm_Shown;
+                // Show Settings form on first launch
+                Logger.Log("Showing Settings form on first launch");
+                ShowSettingsForm();
             }
             catch (Exception ex)
             {
-                Logger.LogError("Error in MainForm constructor", ex);
+                Logger.LogError("Error in TrayApplicationContext constructor", ex);
                 throw;
             }
         }
 
-        private void MainForm_Shown(object? sender, EventArgs e)
+        private void InitializeSystemTray()
         {
-            Logger.Log("MainForm_Shown called - showing Settings form on first launch");
+            Logger.Log("InitializeSystemTray called");
             try
             {
-                // MainForm is already hidden (set in Designer), now show Settings form
-                // Show Settings form as a non-modal dialog so user can interact with it
-                var settingsForm = new SettingsForm(_fileManager, _config);
-                settingsForm.FormClosed += (s, args) =>
+                // Create NotifyIcon
+                _notifyIcon = new NotifyIcon(_components)
                 {
-                    // When Settings form closes, reload config and update
-                    Logger.Log("Settings form closed, reloading configuration");
-                    _config = AppConfig.Load();
-                    LoadAudioFile();
-                    UpdateContextMenu();
-
-                    // Restart hook if needed
-                    _keyboardHook?.UninstallHook();
-                    if (_config.IsEnabled)
-                    {
-                        _keyboardHook?.InstallHook();
-                    }
+                    Text = "Keyboard Sound App",
+                    Visible = true
                 };
-                settingsForm.Show();
+
+                // Set icon
+                try
+                {
+                    _notifyIcon.Icon = System.Drawing.SystemIcons.Application;
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError("Error setting tray icon", ex);
+                }
+
+                // Create context menu
+                _contextMenuStrip = new ContextMenuStrip();
+                _notifyIcon.ContextMenuStrip = _contextMenuStrip;
+                UpdateContextMenu();
+
+                Logger.Log("System tray initialized");
             }
             catch (Exception ex)
             {
-                Logger.LogError("Error in MainForm_Shown", ex);
+                Logger.LogError("Error in InitializeSystemTray", ex);
+                throw;
             }
         }
 
@@ -80,9 +90,6 @@ namespace KeyboardSoundApp
             Logger.Log("InitializeApplication called");
             try
             {
-                // DON'T minimize or hide on first launch - let it show normally
-                // Form will be visible in taskbar on first launch
-                
                 // Initialize keyboard hook
                 Logger.Log("Creating KeyboardHook...");
                 _keyboardHook = new KeyboardHook();
@@ -92,14 +99,6 @@ namespace KeyboardSoundApp
                 // Load default audio file
                 Logger.Log("Loading audio file...");
                 LoadAudioFile();
-
-                // Update tray icon tooltip
-                notifyIcon.Text = "Keyboard Sound App";
-                Logger.Log("Tray icon text set");
-
-                // Update context menu based on enabled state
-                Logger.Log("Updating context menu...");
-                UpdateContextMenu();
 
                 // Install hook if enabled
                 if (_config.IsEnabled)
@@ -218,21 +217,50 @@ namespace KeyboardSoundApp
 
         private void UpdateContextMenu()
         {
-            contextMenuStrip.Items.Clear();
+            _contextMenuStrip.Items.Clear();
 
             var settingsItem = new ToolStripMenuItem("Settings");
             settingsItem.Click += SettingsItem_Click;
-            contextMenuStrip.Items.Add(settingsItem);
+            _contextMenuStrip.Items.Add(settingsItem);
 
             var enableItem = new ToolStripMenuItem(_config.IsEnabled ? "Disable" : "Enable");
             enableItem.Click += EnableItem_Click;
-            contextMenuStrip.Items.Add(enableItem);
+            _contextMenuStrip.Items.Add(enableItem);
 
-            contextMenuStrip.Items.Add(new ToolStripSeparator());
+            _contextMenuStrip.Items.Add(new ToolStripSeparator());
 
             var exitItem = new ToolStripMenuItem("Exit");
             exitItem.Click += ExitItem_Click;
-            contextMenuStrip.Items.Add(exitItem);
+            _contextMenuStrip.Items.Add(exitItem);
+        }
+
+        private void ShowSettingsForm()
+        {
+            Logger.Log("ShowSettingsForm called - displaying Settings form");
+            try
+            {
+                var settingsForm = new SettingsForm(_fileManager, _config);
+                settingsForm.FormClosed += (s, args) =>
+                {
+                    // When Settings form closes, reload config and update
+                    Logger.Log("Settings form closed, reloading configuration");
+                    _config = AppConfig.Load();
+                    LoadAudioFile();
+                    UpdateContextMenu();
+
+                    // Restart hook if needed
+                    _keyboardHook?.UninstallHook();
+                    if (_config.IsEnabled)
+                    {
+                        _keyboardHook?.InstallHook();
+                    }
+                };
+                settingsForm.Show();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Error in ShowSettingsForm", ex);
+            }
         }
 
         private void SettingsItem_Click(object? sender, EventArgs e)
@@ -275,40 +303,19 @@ namespace KeyboardSoundApp
 
         private void ExitItem_Click(object? sender, EventArgs e)
         {
+            Logger.Log("Exit requested from tray menu");
             _keyboardHook?.Dispose();
-            notifyIcon.Visible = false;
-            Application.Exit();
+            _notifyIcon.Visible = false;
+            ExitThread();
         }
 
-        protected override void OnFormClosing(FormClosingEventArgs e)
+        protected override void ExitThreadCore()
         {
-            if (e.CloseReason == CloseReason.UserClosing)
-            {
-                e.Cancel = true;
-                // Hide to system tray instead of closing
-                this.WindowState = FormWindowState.Minimized;
-                this.ShowInTaskbar = false;
-                this.Hide();
-                Logger.Log("Form minimized to system tray");
-            }
-            else
-            {
-                _keyboardHook?.Dispose();
-            }
-            base.OnFormClosing(e);
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                _keyboardHook?.Dispose();
-                if (components != null)
-                {
-                    components.Dispose();
-                }
-            }
-            base.Dispose(disposing);
+            Logger.Log("ExitThreadCore called - cleaning up");
+            _keyboardHook?.Dispose();
+            _notifyIcon?.Dispose();
+            _components?.Dispose();
+            base.ExitThreadCore();
         }
     }
 }
