@@ -62,6 +62,8 @@ namespace KeyboardSoundApp
         {
             if (nCode >= 0 && wParam == (IntPtr)WM_KEYDOWN)
             {
+                var callbackTime = DateTime.Now;
+                Logger.Log($"HOOK: KeyDown detected at {callbackTime:HH:mm:ss.fff} - invoking KeyPressed event");
                 KeyPressed?.Invoke(this, EventArgs.Empty);
             }
 

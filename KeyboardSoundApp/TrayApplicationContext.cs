@@ -7,6 +7,8 @@ namespace KeyboardSoundApp
 {
     public class TrayApplicationContext : ApplicationContext
     {
+        private static int _playbackCounter = 0;
+        
         private KeyboardHook? _keyboardHook;
         private AudioFileManager _fileManager;
         private AppConfig _config;
@@ -159,7 +161,8 @@ namespace KeyboardSoundApp
 
         private void KeyboardHook_KeyPressed(object? sender, EventArgs e)
         {
-            Logger.Log("KeyPressed event received");
+            var keypressTime = DateTime.Now;
+            Logger.Log($"KeyPressed event received at {keypressTime:HH:mm:ss.fff}");
             
             if (!_config.IsEnabled)
             {
@@ -181,33 +184,77 @@ namespace KeyboardSoundApp
 
             try
             {
-                Logger.Log($"Playing sound: {_currentAudioFile}");
+                int playbackId = System.Threading.Interlocked.Increment(ref _playbackCounter);
+                Logger.Log($">>> Starting playback #{playbackId} - file: {_currentAudioFile}");
+                
                 // Play sound on a separate thread - fire and forget for overlapping playback
                 System.Threading.Tasks.Task.Run(() =>
                 {
+                    var taskStartTime = DateTime.Now;
+                    var threadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
+                    Logger.Log($"  Playback #{playbackId} - Task started on thread {threadId} at {taskStartTime:HH:mm:ss.fff}");
+                    
                     MediaPlayer? player = null;
                     try
                     {
+                        var createTime = DateTime.Now;
                         player = new MediaPlayer();
+                        Logger.Log($"  Playback #{playbackId} - MediaPlayer instance created at {createTime:HH:mm:ss.fff}");
+                        
+                        // Add event handlers to track playback state
+                        player.MediaOpened += (s, args) => 
+                        {
+                            Logger.Log($"  Playback #{playbackId} - MediaOpened event fired");
+                        };
+                        
+                        player.MediaEnded += (s, args) => 
+                        {
+                            Logger.Log($"  Playback #{playbackId} - MediaEnded event fired");
+                            try { player?.Close(); } catch { }
+                        };
+                        
+                        player.MediaFailed += (s, args) => 
+                        {
+                            Logger.LogError($"  Playback #{playbackId} - MediaFailed event fired: {args.ErrorException?.Message ?? "Unknown error"}", args.ErrorException);
+                        };
+                        
+                        // Log current state
+                        Logger.Log($"  Playback #{playbackId} - Initial state: HasAudio={player.HasAudio}, CanPause={player.CanPause}");
+                        
                         // Convert local path to URI (ensure it's a proper file URI)
                         var uri = new Uri(System.IO.Path.GetFullPath(_currentAudioFile));
-                        Logger.Log($"Opening media URI: {uri}");
+                        Logger.Log($"  Playback #{playbackId} - Opening media URI: {uri}");
+                        
+                        var openStartTime = DateTime.Now;
                         player.Open(uri);
+                        var openEndTime = DateTime.Now;
+                        var openDuration = (openEndTime - openStartTime).TotalMilliseconds;
+                        Logger.Log($"  Playback #{playbackId} - MediaPlayer.Open() completed in {openDuration:F2}ms");
+                        
                         player.Volume = 1.0;
+                        
+                        var playStartTime = DateTime.Now;
                         player.Play();
-                        Logger.Log("Media playback started");
+                        var playEndTime = DateTime.Now;
+                        var playDuration = (playEndTime - playStartTime).TotalMilliseconds;
+                        
+                        // Check state after Play()
+                        var stateAfterPlay = $"HasAudio={player.HasAudio}, NaturalDuration={player.NaturalDuration}, Position={player.Position}";
+                        Logger.Log($"  Playback #{playbackId} - MediaPlayer.Play() completed in {playDuration:F2}ms - State: {stateAfterPlay}");
                         
                         // No sleep needed - MediaPlayer.Play() is non-blocking
                         // Each MediaPlayer instance will play independently, allowing overlapping sounds
                     }
                     catch (Exception ex)
                     {
-                        Logger.LogError("Error playing sound", ex);
+                        Logger.LogError($"Playback #{playbackId} - Error playing sound", ex);
                         player?.Close();
                     }
                     // Note: MediaPlayer will be garbage collected when out of scope
                     // This allows multiple instances to play simultaneously
                 });
+                
+                Logger.Log($"<<< Playback #{playbackId} - Task.Run() returned (non-blocking)");
             }
             catch (Exception ex)
             {
