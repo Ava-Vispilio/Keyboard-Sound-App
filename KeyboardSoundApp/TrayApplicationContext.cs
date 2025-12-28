@@ -225,11 +225,8 @@ namespace KeyboardSoundApp
                         var uri = new Uri(System.IO.Path.GetFullPath(_currentAudioFile));
                         Logger.Log($"  Playback #{playbackId} - Opening media URI: {uri}");
                         
-                        var openStartTime = DateTime.Now;
                         player.Open(uri);
-                        var openEndTime = DateTime.Now;
-                        var openDuration = (openEndTime - openStartTime).TotalMilliseconds;
-                        Logger.Log($"  Playback #{playbackId} - MediaPlayer.Open() completed in {openDuration:F2}ms");
+                        Logger.Log($"  Playback #{playbackId} - MediaPlayer.Open() called");
                         
                         player.Volume = 1.0;
                         
@@ -237,10 +234,7 @@ namespace KeyboardSoundApp
                         player.Play();
                         var playEndTime = DateTime.Now;
                         var playDuration = (playEndTime - playStartTime).TotalMilliseconds;
-                        
-                        // Check state after Play()
-                        var stateAfterPlay = $"HasAudio={player.HasAudio}, NaturalDuration={player.NaturalDuration}, Position={player.Position}";
-                        Logger.Log($"  Playback #{playbackId} - MediaPlayer.Play() completed in {playDuration:F2}ms - State: {stateAfterPlay}");
+                        Logger.Log($"  Playback #{playbackId} - MediaPlayer.Play() called in {playDuration:F2}ms");
                         
                         // No sleep needed - MediaPlayer.Play() is non-blocking
                         // Each MediaPlayer instance will play independently, allowing overlapping sounds
