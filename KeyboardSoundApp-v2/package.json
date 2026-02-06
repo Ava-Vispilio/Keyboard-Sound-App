@@ -1,0 +1,54 @@
+{
+  "name": "keyboard-sound-app",
+  "version": "2.0.0",
+  "type": "module",
+  "description": "Cross-platform keyboard sound app (macOS + Windows)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:mac-listener": "cd libs/key-listeners && swiftc -o keyboard-sound-listener mac-key-listener.swift",
+    "build:win-listener": "cd libs/key-listeners && g++ -o keyboard-sound-listener.exe win-key-listener.cpp -mwindows -static -luser32"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "electron-store": "^8.1.0"
+  },
+  "build": {
+    "appId": "com.keyboardsoundapp.v2",
+    "productName": "Keyboard Sound App",
+    "directories": {
+      "output": "exports"
+    },
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": [
+        "dmg"
+      ],
+      "extraResources": [
+        {
+          "from": "libs/key-listeners/keyboard-sound-listener",
+          "to": "keyboard-sound-listener"
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "extraResources": [
+        {
+          "from": "libs/key-listeners/keyboard-sound-listener.exe",
+          "to": "keyboard-sound-listener.exe"
+        }
+      ]
+    }
+  }
+}

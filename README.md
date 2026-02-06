@@ -16,3 +16,32 @@ Sounds are NOT provided (although you can upload as many as you want and choose 
 ## Notes
 - Most audio file formats should be supported
 - Feel free to make a pull request for contributions!
+
+## Debug logs (v2 Electron app)
+
+The v2 app (KeyboardSoundApp-v2) writes logs to `debug.log` in its userData folder. Dev (`npm start`) and the packaged app use different folders.
+
+**Clear both logs**
+```bash
+rm ~/Library/Application\ Support/Keyboard\ Sound\ App/debug.log
+rm ~/Library/Application\ Support/keyboard-sound-app/debug.log
+```
+
+**View both logs**
+```bash
+cat ~/Library/Application\ Support/Keyboard\ Sound\ App/debug.log
+cat ~/Library/Application\ Support/keyboard-sound-app/debug.log
+```
+
+**Clear then view (e.g. before a packaged run)**
+```bash
+rm -f ~/Library/Application\ Support/Keyboard\ Sound\ App/debug.log ~/Library/Application\ Support/keyboard-sound-app/debug.log
+# run packaged app, then:
+cat ~/Library/Application\ Support/Keyboard\ Sound\ App/debug.log
+```
+
+**View both (dev first, then packaged)**
+```bash
+echo "=== Dev (keyboard-sound-app) ===" && cat ~/Library/Application\ Support/keyboard-sound-app/debug.log
+echo "=== Packaged (Keyboard Sound App) ===" && cat ~/Library/Application\ Support/Keyboard\ Sound\ App/debug.log
+```
