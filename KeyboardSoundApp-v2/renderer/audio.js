@@ -47,9 +47,12 @@
     /**
      * Play using HTMLAudioElement with a blob URL (no Web Audio decodeAudioData).
      * app-audio:// is not a "supported source" for <audio>; blob URLs are.
+     * Always read store from main so toggling Enable from tray vs settings stays in sync.
      */
     function play(payload) {
+        store = window.api.getStore();
         if (!store.isEnabled) return;
+        defaultFileName = store.defaultAudioFile;
         if (!defaultFileName) return;
         const keycode = payload && typeof payload.keycode === 'number' ? payload.keycode : null;
         const when = payload && payload.when ? payload.when : new Date().toISOString();

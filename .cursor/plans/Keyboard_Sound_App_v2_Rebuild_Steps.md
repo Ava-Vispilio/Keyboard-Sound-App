@@ -100,17 +100,7 @@ Reference for rebuilding the Electron app one feature at a time, with verificati
 
 ---
 
-## Phase 8: macOS Permission Gate (macOS Only)
-
-| Step | Task | Deliverable | Verify |
-|------|------|-------------|--------|
-| 8.1 | Add `verifyAccessibilityPermission()` – spawn listener briefly, interpret exit code | Permission check works | Returns true when permitted |
-| 8.2 | On first run (macOS, no permission): show `permission.html` with instructions and "Open System Settings" | Permission UI shown | First run shows permission screen |
-| 8.3 | Add "Verify Permission" button – re-run check, then load `settings.html` if granted | Flow works | After granting, settings load |
-
----
-
-## Phase 9: Polish & Cleanup
+## Phase 8: Polish & Cleanup
 
 | Step | Task | Deliverable | Verify |
 |------|------|-------------|--------|
@@ -144,5 +134,4 @@ Reference for rebuilding the Electron app one feature at a time, with verificati
 6. Phase 5 (audio playback)
 7. Phase 6 (key listeners)
 8. Phase 7 (integration)
-9. Phase 8 (macOS permission)
-10. Phase 9 (polish)
+9. Phase 9 (polish)

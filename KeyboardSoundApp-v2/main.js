@@ -226,7 +226,7 @@ function updateTrayMenu() {
             click: () => {
                 const next = !store.get('isEnabled');
                 store.set('isEnabled', next);
-                log('[Main] isEnabled set to ' + next);
+                log('[Main] isEnabled set to ' + next + ' (tray)');
                 updateTrayMenu();
                 safeSendToSettings('updated-isEnabled', next);
                 safeSendToAudio('updated-isEnabled', next);
@@ -308,6 +308,7 @@ ipcMain.handle('store-set', async (_, key, value) => {
     safeSendToSettings('updated-' + key, value);
     safeSendToAudio('updated-' + key, value);
     if (key === 'isEnabled') {
+        log('[Main] isEnabled set to ' + value + ' (settings)');
         updateTrayMenu();
         if (value) startKeyListener();
         else stopKeyListener();

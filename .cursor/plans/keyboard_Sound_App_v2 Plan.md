@@ -59,10 +59,10 @@ isProject: false
 
 ### Phase 7 (Key capture → playback)
 
-- **main.js**: **Hidden audio window**: `createAudioWindow()` creates a BrowserWindow with `show: false`, loads `audio.html` (only `renderer/audio.js`). Never shown; used only for keydown→play so playback works when settings is closed and we avoid running heavy decode in the visible window. `safeSendToAudio(channel, ...args)` sends to audio window. Keydown is sent to **audio window only** (`safeSendToAudio('keydown', { keycode, when })`), not settings. Store updates (`store-set`, tray Enable/Disable) call both `safeSendToSettings('updated-...')` and `safeSendToAudio('updated-...')` so both windows stay in sync. `getListenerPath()`, `startKeyListener()`, `stopKeyListener()` as before; logs `[Main] keydown key=N at <ISO time> -> sending to audio window`. Listener started when `isEnabled` on ready and when user enables; stopped when user disables. Before-quit: stop listener, close audio window, then settings.
+- **main.js**: **Hidden audio window**: `createAudioWindow()` creates a BrowserWindow with `show: false`, loads `audio.html` (only `renderer/audio.js`). Never shown; used only for keydown→play so playback works when settings is closed and we avoid running heavy decode in the visible window. `safeSendToAudio(channel, ...args)` sends to audio window. Keydown is sent to **audio window only** (`safeSendToAudio('keydown', { keycode, when })`), not settings. Store updates (`store-set`, tray Enable/Disable) call both `safeSendToSettings('updated-...')` and `safeSendToAudio('updated-...')` so both windows stay in sync. **Tray Enable/Disable** and **store-set for isEnabled** both call `startKeyListener()` / `stopKeyListener()` so the listener starts and stops whether the user toggles from tray or settings. `getListenerPath()`: dev = `libs/key-listeners/`, packaged = `process.resourcesPath` (binary from `extraResources`). Logs `[Main] keydown key=N at <ISO time> -> sending to audio window` and `[Main] isEnabled set to … (tray)` or `(settings)` for toggle source. Before-quit: stop listener, close audio window, then settings.
 - **audio.html**: Minimal page that loads only `renderer/audio.js` (no settings UI).
 - **preload.cjs**: `api.onKeyDown(callback)` – IPC listener for `keydown` channel; callback receives `{ keycode, when }`. Also `api.logToMain(msg)` for renderer→main logs.
-- **renderer/audio.js**: Subscribes `api.onKeyDown`; on each keydown calls `play(payload)`. Debug logs: `[Rdr] audio: keydown key=N at <when> -> sound played` (or `-> play failed ...` / `-> skipped (no blob)`). `window.__audioPlay()` still works for manual test (in settings or audio window).
+- **renderer/audio.js**: Subscribes `api.onKeyDown`; on each keydown calls `play(payload)`. At the start of `play()`, refreshes `store` and `defaultFileName` from main (`window.api.getStore()`) so enable/disable and default file stay correct when toggling from tray vs settings. Debug logs: `[Rdr] audio: keydown key=N at <when> -> sound played` (or `-> play failed ...` / `-> skipped (no blob)`). `window.__audioPlay()` still works for manual test (in settings or audio window).
 
 **Current project structure (after Phase 7):**
 
@@ -87,6 +87,16 @@ KeyboardSoundApp-v2/
 ```
 
 No app icon is supplied yet; tray uses an empty icon. Add `assets/icons/icon.png` (e.g. 16×16) later and switch `getTrayIcon()` to load it.
+
+### Bugs fixed (post–Phase 7)
+
+- **Blank window on macOS**: Using Web Audio `decodeAudioData()` in any renderer caused the BrowserWindow frame to dispose/blank. Fix: use **HTMLAudioElement + blob URL only**; fetch `app-audio://` → `response.blob()` → `URL.createObjectURL(blob)`; no `decodeAudioData` anywhere.
+- **Set as Default blanking**: Loading/decoding when the default file changed caused issues. Fix: do not load/decode on default change; only clear the cached blob URL so the next `play()` fetches and caches the new file.
+- **Playback when settings closed**: Keydown was only sent to the settings window initially. Fix: **hidden audio window** (`audio.html` + `audio.js`); keydown sent only to the audio window via `safeSendToAudio('keydown', …)`; settings window still loads `audio.js` only for the "Play default sound" button.
+- **Packaged app missing listener binary**: The native listener was not included in the app bundle. Fix: added **`extraResources`** in `package.json` under `build.mac` and `build.win` to copy `keyboard-sound-listener` / `keyboard-sound-listener.exe` into the app. Run `npm run build:mac-listener` (or `build:win-listener`) **before** `npm run build:mac` (or `build:win`).
+- **Tray Enable/Disable not starting/stopping listener**: Tray menu only updated store and notified windows; it did not call `startKeyListener()` / `stopKeyListener()`. Fix: in the tray menu click handler for Enable/Disable, call `if (next) startKeyListener(); else stopKeyListener();`. The `store-set` handler for `isEnabled` already started/stopped the listener when the checkbox was toggled in settings.
+- **Alternating tray vs settings toggle breaking**: The audio window could use stale `store` if a keydown was processed before the `updated-isEnabled` IPC. Fix: in **audio.js** `play()`, always refresh state from main at the start: `store = window.api.getStore();` and `defaultFileName = store.defaultAudioFile;` so every keypress uses current `isEnabled` and default file regardless of IPC delivery order.
+- **Debug logs for enable/disable source**: Main process now logs where the toggle came from: `[Main] isEnabled set to true/false (tray)` when toggled from the tray menu, and `[Main] isEnabled set to true/false (settings)` when toggled via the settings checkbox (IPC `store-set`).
 
 ---
 
@@ -274,9 +284,9 @@ Binary names: `keyboard-sound-listener` (macOS) and `keyboard-sound-listener.exe
 - **First launch**: Show settings window once on app ready (mirror v1 "Show Settings form on first launch").
 - **Config**: electron-store with `defaultAudioFile` (string, empty), `isEnabled` (boolean, true). Store path: default userData.
 - **Key listener**:
-  - Spawn path: dev = `libs/key-listeners/keyboard-sound-listener[.exe]`, packaged = `process.resourcesPath/keyboard-sound-listener[.exe]`
+  - Spawn path: `getListenerPath()` — dev = `libs/key-listeners/keyboard-sound-listener[.exe]`, packaged = `process.resourcesPath/keyboard-sound-listener[.exe]` (binary copied via `extraResources`; run `build:mac-listener` or `build:win-listener` before packaging).
   - Parse stdout: each line = JSON. Expect `{"keydown": N}`. Forward to **audio window** via `safeSendToAudio('keydown', { keycode, when })` (not settings window).
-  - Start only when `isEnabled` is true. Stop on disable, sleep, or quit.
+  - Start when `isEnabled` is true (on ready, when user enables from tray, or when settings checkbox enables). Stop when user disables from tray or settings, or on quit.
 - **Single instance lock**: `app.requestSingleInstanceLock`; second instance focuses settings window.
 - **Cleanup**: before-quit: stop listener (kill), destroy tray, close audio window, close settings window.
 
@@ -296,7 +306,7 @@ Preload runs in isolated context; use nodeIntegration: false, contextIsolation: 
 
 ### 5. Audio File Manager (utils/audio-file-manager.cjs)
 
-Node/CommonJS module (used from main and preload):
+Node/CommonJS module (used from main only; renderer uses IPC which main handles with the manager):
 
 - **Storage path**: `path.join(app.getPath('userData'), 'AudioFiles')` - ensures directory exists.
 - **AddFile(sourcePath)**: Copy to storage, handle duplicate names (append " (1)", " (2)", etc.). Validate extension (mp3, wav, wma, m4a, aac, ogg, flac). Return success boolean.
@@ -305,7 +315,7 @@ Node/CommonJS module (used from main and preload):
 - **GetFullPath(fileName)**: Return full path for a stored file.
 - **ValidateAudioFile(path)**: Check extension against allowed list.
 
-### 6. Settings UI (settings.html + renderer/settings.cjs)
+### 6. Settings UI (settings.html + renderer/settings.js)
 
 **UI components** (mirror v1 SettingsForm):
 
@@ -322,16 +332,16 @@ Load file list on open. Reload config from store on show. Wire `onSettingUpdate`
 ### 7. Audio Playback (renderer/audio.js)
 
 - **HTMLAudioElement + blob URL** (no Web Audio `decodeAudioData`): On macOS, `decodeAudioData()` in any renderer disposes the frame; playback uses `<audio>` with a blob URL instead. Flow: `fetch(api.getAudioFileUrl(defaultFileName))` (app-audio protocol) → `response.blob()` → `URL.createObjectURL(blob)`; cache one blob URL per default file (`cachedBlobUrl`). On default change, revoke old blob URL. `<audio src="app-audio://...">` is not a supported source in Chromium ("no supported source was found"); blob URL is required.
-- **Play on keydown**: `api.onKeyDown` receives `{ keycode, when }`. Check `isEnabled` and `defaultAudioFile`. Call `ensureBlobUrl()` (fetch + blob + createObjectURL if not cached), then `new Audio(blobUrl).play()`. Debug log: `[Rdr] audio: keydown key=N at <when> -> sound played` (or play failed / skipped).
+- **Play on keydown**: `api.onKeyDown` receives `{ keycode, when }`. At the start of `play()`, refresh `store` and `defaultFileName` from main (`window.api.getStore()`) so toggling Enable from tray vs settings never uses stale state. Then check `isEnabled` and `defaultAudioFile`, call `ensureBlobUrl()` (fetch + blob + createObjectURL if not cached), then `new Audio(blobUrl).play()`. Debug log: `[Rdr] audio: keydown key=N at <when> -> sound played` (or play failed / skipped).
 - **Overlapping**: Each keydown creates a new `Audio` instance; multiple can play simultaneously.
 - **Where it runs**: Hidden audio window (always) and settings window (for `__audioPlay()` when settings open). Keydown is sent only to the audio window.
 - **Volume**: Use default 1.0; v1 uses Volume = 1.0.
 
 ### 8. Packaging
 
-- **macOS**: Build listener for arm64 + x64, lipo to universal binary. `extraResources` from `libs/key-listeners/keyboard-sound-listener` to `keyboard-sound-listener`. Optional afterSign for notarization.
-- **Windows**: Build listener to `.exe`. `extraResources` from `libs/key-listeners/keyboard-sound-listener.exe` to `keyboard-sound-listener.exe`.
-- Output: `exports/` or similar. Artifact names: `KeyboardSoundApp-Setup-{arch}.{ext}`.
+- **macOS**: Build listener first: `npm run build:mac-listener`. Then `npm run build:mac`. `extraResources` in package.json copies `libs/key-listeners/keyboard-sound-listener` to `keyboard-sound-listener` in app Resources. Optional: universal binary (arm64 + x64, lipo) and afterSign for notarization.
+- **Windows**: Build listener first: `npm run build:win-listener`. Then `npm run build:win`. `extraResources` copies `keyboard-sound-listener.exe` into the app.
+- Output: `exports/` (from build.directories.output). Debug log paths: dev app uses `userData` for "keyboard-sound-app"; packaged uses "Keyboard Sound App"; see README for clear/cat commands.
 
 ---
 
@@ -364,7 +374,7 @@ Load file list on open. Reload config from store on show. Wire `onSettingUpdate`
 - [ ] Add File: dialog filters mp3,wav,wma,m4a,aac,ogg,flac; file copied to userData/AudioFiles
 - [ ] Delete File: confirmation dialog; if default deleted, default cleared
 - [ ] Set as Default: only when user explicitly selects; no auto-set
-- [ ] Enable checkbox: toggles app on/off; tray menu reflects state
+- [ ] Enable checkbox: toggles app on/off; tray menu reflects state; listener starts/stops whether toggled from tray or settings
 - [ ] Settings opens on first launch
 - [ ] Settings opens from tray "Settings" click
 - [ ] App stays running when settings closed (tray remains)
@@ -393,21 +403,22 @@ npm run build:win
 
 1. **Run the app**: From `KeyboardSoundApp-v2` run `npm start`. Tray icon and menu should behave as in Phase 1.
 2. **Storage directory**: After startup, confirm `AudioFiles` exists:
-   - **macOS**: `~/Library/Application Support/Keyboard Sound App/AudioFiles`
-   - **Windows**: `%APPDATA%\Keyboard Sound App\AudioFiles`
+   - **macOS (dev)**: `~/Library/Application Support/keyboard-sound-app/AudioFiles`
+   - **macOS (packaged)**: `~/Library/Application Support/Keyboard Sound App/AudioFiles`
+   - **Windows**: `%APPDATA%\Keyboard Sound App\AudioFiles` (or keyboard-sound-app when running with `npm start`)
    In the terminal you should see: `Audio file manager ready: .../AudioFiles`.
-3. **Log file**: Open `userData/debug.log` (path shown in terminal at startup). You should see `Phase 2 ready` (or `Phase 3 ready` once Phase 3 is running).
+3. **Log file**: Open `userData/debug.log` (see README for paths: dev vs packaged use different app names). You should see `Phase 6/7 ready` once the app is fully up.
 
 ### Phase 3 (Settings window)
 
-1. **First launch**: Run `npm start`. The settings window should open automatically. You should see: Enable checkbox, empty file list, Add File / Delete / Set as Default / Close, and status "Ready".
+1. **First launch**: Run `npm start`. The settings window should open automatically. You should see: Enable checkbox, empty file list, Add File / Delete / Set as Default / Play default sound / Close, and status "Ready".
 2. **Add File**: Click "Add File", choose an audio file (e.g. .mp3, .wav). The file should be copied into `userData/AudioFiles` and appear in the list. Status should show "File added successfully."
 3. **Set as Default**: Select a file in the list, click "Set as Default". The file should show "(Default)" and the button should become "Default (Current)". Status: "Default file set to: …".
 4. **Delete**: Select a file, click "Delete", confirm "Yes". The file should disappear from the list. If you deleted the default, the default should clear.
 5. **Enable checkbox**: Toggle Enable; then open the tray menu – it should show "Disable" or "Enable" to match. Close the settings window, change Enable/Disable from the tray, reopen Settings – the checkbox should match the tray.
 6. **Close**: Click "Close". The settings window should hide; the app keeps running (tray visible). Click tray → "Settings" to show the window again.
 7. **Second instance**: Run `npm start` again in another terminal. The second instance should not open a new app; the existing settings window should come to the front.
-8. **Log file**: In `userData/debug.log` look for `add-audio-file`, `delete-audio-file`, `createSettingsWindow`, and `Settings window shown on first launch`.
+8. **Log file**: In `userData/debug.log` (see README for dev vs packaged paths) look for `add-audio-file`, `delete-audio-file`, `createSettingsWindow`, `Settings window shown on first launch`, and `Phase 6/7 ready`.
 
 ### Phase 4 & 5 – Extended testing (protocol + playback)
 
